@@ -49,6 +49,14 @@ class ScreenshotRenamerApp:
             # Display the screenshot along with the file name
             self.display_screenshot(new_filepath, new_filename)
 
+        # Save collected answers to a JSON file
+        self.save_answers_to_json()
+
+    def save_answers_to_json(self):
+        json_file = os.path.join(self.screenshot_folder, 'answers.json')
+        with open(json_file, 'w') as file:
+            json.dump(self.answers, file)
+
     def display_screenshot(self, screenshot_path, filename):
         img = Image.open(screenshot_path)
         # Resize for display while maintaining aspect ratio

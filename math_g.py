@@ -22,12 +22,18 @@ class ImageSolverApp:
         self.start_number = 0
         self.end_number = 0
         self.problems = {}
+        self.current_problem_number = 0  # Add this line
 
         self.total_solve_time = 0
         self.correct_attempts = 0
 
+        self.entered_solution = None  # New instance variable for entered solution
+        self.answer_window = None  # New instance variable for the answer window
+
         self.create_widgets()
 
+    def show_answer_wrapper(self):
+        self.show_answer()
     def create_widgets(self):
         label_font = ("Helvetica", 12)
 
@@ -48,6 +54,15 @@ class ImageSolverApp:
         self.image_label = tk.Label(self.master, font=label_font)
         self.image_label.pack()
 
+        # New button for showing answers
+        self.show_answer_button = tk.Button(self.master, text="Show Answer", command=self.show_answer_wrapper)
+        self.show_answer_button.pack()
+
+
+        # New button for hiding the answer
+        self.hide_answer_button = tk.Button(self.master, text="Hide Answer", command=self.hide_answer, state=tk.DISABLED)
+        self.hide_answer_button.pack()
+
         # Bind the <Return> key to the start_solving method
         self.master.bind('<Return>', lambda event=None: self.start_solving())
 
@@ -60,6 +75,7 @@ class ImageSolverApp:
     def start_solving(self):
         self.start_number = int(self.start_number_entry.get())
         self.end_number = int(self.end_number_entry.get())
+        self.current_problem_number = self.start_number  # Update the current_problem_number
 
         self.json_file = os.path.join(self.image_folder, 'answers.json')
 
@@ -106,51 +122,110 @@ class ImageSolverApp:
         self.image_label.config(image=img_tk)
         self.image_label.image = img_tk
 
+
+    def is_solution_correct(self, expected_solution):
+        try:
+            entered_solution = float(self.entered_solution)
+            return entered_solution == expected_solution
+        except ValueError:
+            similarity_ratio = fuzz.ratio(self.entered_solution.lower(), str(expected_solution).lower())
+            return similarity_ratio >= 90
+
     def solve_problem(self, expected_solution, problem_number):
         self.progress_label.config(text=f"Solving problem {problem_number}")
         start_time = time.time()
+
         while True:
-            solution = simpledialog.askstring("Input", "Enter the solution to the problem:")
+            # Create a Toplevel window for the input dialog
+            input_dialog = tk.Toplevel(self.master)
+            input_dialog.title("Input")
+
+            # Entry widget for user input
+            solution_entry = tk.Entry(input_dialog, font=("Helvetica", 12))
+            solution_entry.pack(pady=10)
+
+            # OK button to submit the solution
+            ok_button = tk.Button(input_dialog, text="OK", command=lambda: self.set_solution(solution_entry.get(), input_dialog), font=("Helvetica", 12))
+            ok_button.pack()
+
+            input_dialog.wait_window()  # Wait for the input dialog to be closed
+
             end_time = time.time()
 
-            if isinstance(expected_solution, (int, float)):
-                # If the expected solution is a number, check for an exact match
-                try:
-                    solution = float(solution)
-                    if solution == expected_solution:
-                        messagebox.showinfo("Result", "Correct!")
-                        self.play_correct_sound()
-                        return end_time - start_time
-                    else:
-                        response = messagebox.askokcancel("Try Again", "Incorrect. Try again.")
-                        self.play_wrong_sound()
-                        if not response:
-                            break
-                except ValueError:
-                    # If the input is not a valid number, ask for input again
-                    messagebox.showerror("Error", "Please enter a valid number.")
-            else:
-                # Use fuzzy matching to check similarity for text
-                similarity_ratio = fuzz.ratio(solution.lower(), str(expected_solution).lower())
+            if self.entered_solution is None:
+                messagebox.showerror("Error", f"No solution found for problem {problem_number}.")
+                return 0  # Return 0 solve time for problems with no solution
 
-                if similarity_ratio >= 90:  # Adjust the threshold as needed
-                    messagebox.showinfo("Result", f"Correct  with similarity: {similarity_ratio}!")
-                    self.play_correct_sound()
-                    return end_time - start_time
-                else:
-                    response = messagebox.askokcancel("Try Again", f"Incorrect with similarity: {similarity_ratio}. Try again.")
-                    self.play_wrong_sound()
-                    if not response:
-                        break
+            if self.is_solution_correct(expected_solution):
+                messagebox.showinfo("Result", "Correct!")
+                self.play_correct_sound()
+
+                # Proceed to the next problem only if the answer is correct
+                self.show_answer_button.config(state=tk.NORMAL)
+                self.hide_answer_button.config(state=tk.DISABLED)  # Disable hide answer button for the next problem
+                self.master.update()
+
+                return end_time - start_time
+            else:
+                messagebox.showwarning("Incorrect", "Incorrect answer. Please try again.")
+                self.play_wrong_sound()
+
+            # Enable the hide answer button after the user has attempted to solve the problem
+            self.hide_answer_button.config(state=tk.NORMAL)
+
+            # Force an update to the tkinter window to ensure the "Hide Answer" button is clickable
+            self.master.update()
+
+            input_dialog.destroy()
+    def show_answer(self):
+        problem_number = self.current_problem_number
+        answer_image_path = os.path.join(self.image_folder, f"answer_{problem_number}.png")
+
+        if os.path.exists(answer_image_path):
+            self.answer_window = tk.Toplevel(self.master)
+            self.answer_window.title("Answer")
+            answer_img = Image.open(answer_image_path)
+            answer_img_tk = ImageTk.PhotoImage(answer_img)
+
+            answer_label = tk.Label(self.answer_window, image=answer_img_tk)
+            answer_label.image = answer_img_tk
+            answer_label.pack()
+
+            self.show_answer_button.config(state=tk.DISABLED)
+            self.hide_answer_button.config(state=tk.NORMAL)  # Enable the hide answer button
+        else:
+            messagebox.showwarning("Warning", f"Answer image not found for problem {problem_number}.")
+
+
+    def hide_answer(self):
+        if self.answer_window:
+            self.answer_window.destroy()
+
+        # Reset the image label to the question image
+        question_image_path = os.path.join(self.image_folder, f"problem_{self.current_problem_number}.png")
+        self.show_image(question_image_path)
+
+        # Enable the show answer button
+        self.show_answer_button.config(state=tk.NORMAL)
+        # Disable the hide answer button
+        self.hide_answer_button.config(state=tk.DISABLED)
+
+
+    def set_solution(self, solution, input_dialog):
+        # Store the entered solution in the instance variable
+        self.entered_solution = solution
+
+        # Destroy the Toplevel window
+        input_dialog.destroy()
+
+
 
     def play_correct_sound(self):
-        # Load and play the correct sound file
         correct_sound_file = os.path.join(self.script_directory, 'correct_sound.mp3')
         pygame.mixer.music.load(correct_sound_file)
         pygame.mixer.music.play()
 
     def play_wrong_sound(self):
-        # Load and play the correct sound file
         correct_sound_file = os.path.join(self.script_directory, 'wrong_sound.mp3')
         pygame.mixer.music.load(correct_sound_file)
         pygame.mixer.music.play()
@@ -158,14 +233,12 @@ class ImageSolverApp:
 def load_json(json_file):
     with open(json_file, 'r') as file:
         data = json.load(file)
-        # Check if each value can be converted to a number, and convert if possible
         for key, value in data.items():
             try:
                 float_value = float(value)
-                # Check if the float value is actually an integer (e.g., 5.0)
                 data[key] = int(float_value) if float_value.is_integer() else float_value
             except ValueError:
-                pass  # Ignore if the value cannot be converted to a number
+                pass
     return data
 
 def save_json(json_file, data):
