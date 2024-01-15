@@ -31,7 +31,7 @@ class ScreenshotRenamerApp:
     def load_screenshots(self):
         # Get all image files in the folder and sort them by creation time
         image_files = [f for f in os.listdir(self.screenshot_folder) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif'))]
-        image_files.sort(key=lambda f: os.path.getctime(os.path.join(self.screenshot_folder, f)))
+        image_files.sort(key=lambda f: os.path.getmtime(os.path.join(self.screenshot_folder, f)))
 
         self.screenshot_paths = [os.path.join(self.screenshot_folder, f) for f in image_files]
 
