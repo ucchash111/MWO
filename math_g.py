@@ -22,7 +22,7 @@ class ImageSolverApp:
         self.start_number = 0
         self.end_number = 0
         self.problems = {}
-        self.current_problem_number = 0  # Add this line
+        self.current_problem_number = 0  # Add this lineasw
 
         self.total_solve_time = 0
         self.correct_attempts = 0
@@ -75,33 +75,35 @@ class ImageSolverApp:
     def start_solving(self):
         self.start_number = int(self.start_number_entry.get())
         self.end_number = int(self.end_number_entry.get())
-        self.current_problem_number = self.start_number  # Update the current_problem_number
-
-        self.json_file = os.path.join(self.image_folder, 'answers.json')
-
-        try:
-            self.problems = load_json(self.json_file)
-        except FileNotFoundError:
-            messagebox.showerror("Error", "answers.json not found in the selected folder.")
-            return
-
+    
         for problem_number in range(self.start_number, self.end_number + 1):
+            self.current_problem_number = problem_number  # Update the current_problem_number for each problem
+    
+            self.json_file = os.path.join(self.image_folder, 'answers.json')
+    
+            try:
+                self.problems = load_json(self.json_file)
+            except FileNotFoundError:
+                messagebox.showerror("Error", "answers.json not found in the selected folder.")
+                return
+    
             image_path = os.path.join(self.image_folder, f"problem_{problem_number}.png")
-
+    
             if not os.path.exists(image_path):
                 messagebox.showwarning("Warning", f"Image not found for problem {problem_number}. Skipping.")
                 continue
-
+    
             self.show_image(image_path)
             expected_solution = self.problems.get(str(problem_number))
             solve_time = self.solve_problem(expected_solution, problem_number)
-
+    
             self.total_solve_time += solve_time
             self.correct_attempts += 1
-
+    
         average_solve_time = self.total_solve_time / self.correct_attempts if self.correct_attempts > 0 else 0
         result_text = f"Average solving time for correct answers: {average_solve_time:.2f} seconds"
         messagebox.showinfo("Results", result_text)
+
 
     def show_image(self, image_path):
         img = Image.open(image_path)
@@ -178,7 +180,7 @@ class ImageSolverApp:
 
             input_dialog.destroy()
     def show_answer(self):
-        problem_number = self.current_problem_number
+        problem_number = self.current_problem_number  # Use the current problem number
         answer_image_path = os.path.join(self.image_folder, f"answer_{problem_number}.png")
 
         if os.path.exists(answer_image_path):
@@ -196,7 +198,6 @@ class ImageSolverApp:
         else:
             messagebox.showwarning("Warning", f"Answer image not found for problem {problem_number}.")
 
-
     def hide_answer(self):
         if self.answer_window:
             self.answer_window.destroy()
@@ -209,7 +210,6 @@ class ImageSolverApp:
         self.show_answer_button.config(state=tk.NORMAL)
         # Disable the hide answer button
         self.hide_answer_button.config(state=tk.DISABLED)
-
 
     def set_solution(self, solution, input_dialog):
         # Store the entered solution in the instance variable
