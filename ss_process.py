@@ -11,6 +11,8 @@ class ScreenshotRenamerApp:
         self.screenshot_folder = ""
         self.screenshot_paths = []
         self.answers = {}
+        self.photo_images = []  # List to store PhotoImage objects
+        self.display_window = None  # Reference to the display window
 
         self.create_widgets()
 
@@ -47,21 +49,6 @@ class ScreenshotRenamerApp:
             # Display the screenshot along with the file name
             self.display_screenshot(new_filepath, new_filename)
 
-            # Prompt user for the answer
-            answer = simpledialog.askstring("Input", f"Enter the answer to {new_filename}:")
-            if answer is None:  # If user clicks cancel
-                break
-
-            # Save the answer
-            self.answers[str(idx + 1)] = answer
-
-        # Save answers to a JSON file
-        answers_file_path = os.path.join(self.screenshot_folder, "answers.json")
-        with open(answers_file_path, 'w') as json_file:
-            json.dump(self.answers, json_file, indent=2)
-
-        messagebox.showinfo("Info", f"Answers saved to {answers_file_path}")
-
     def display_screenshot(self, screenshot_path, filename):
         img = Image.open(screenshot_path)
         # Resize for display while maintaining aspect ratio
@@ -69,29 +56,36 @@ class ScreenshotRenamerApp:
         target_width = 800
         target_height = int(target_width * height / width)
         img = img.resize((target_width, target_height), Image.ANTIALIAS)
-        img_tk = ImageTk.PhotoImage(img)
-    
+        photo_image = ImageTk.PhotoImage(img)
+        self.photo_images.append(photo_image)  # Add PhotoImage to the list
+
+        # Destroy the existing window before creating a new one
+        if self.display_window:
+            self.display_window.destroy()
+
         # Create a new window for displaying the screenshot
-        display_window = tk.Toplevel(self.master)
-        display_window.title(f"Screenshot: {filename}")
-    
-        # Display the screenshot in the new window
-        label = tk.Label(display_window, image=img_tk)
-        label.image = img_tk
+        self.display_window = tk.Toplevel(self.master)
+        self.display_window.title(f"Screenshot: {filename}")
+        label = tk.Label(self.display_window, image=photo_image)
+        label.image = photo_image
         label.pack()
-    
-        # Display the filename in the new window
-        filename_label = tk.Label(display_window, text=f"Current file: {filename}")
+
+        # Display the filename in the window
+        filename_label = tk.Label(self.display_window, text=f"Current file: {filename}")
         filename_label.pack()
-    
+
         # Prompt user for the answer
-        answer = simpledialog.askstring("Input", f"Enter the answer to {filename}:")
-    
-        # Destroy the window after 1 second
-        self.master.after(1000, display_window.destroy)
-    
+        answer = self.get_user_input(f"Enter the answer to {filename}:")
+
+        # Destroy the window if user clicks cancel
+        if answer is None:
+            self.display_window.destroy()
+
         # Save the answer
         self.answers[str(len(self.answers) + 1)] = answer
+
+    def get_user_input(self, prompt):
+        return simpledialog.askstring("Input", prompt)
 
 
 if __name__ == "__main__":
