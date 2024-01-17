@@ -22,7 +22,7 @@ class ImageSolverApp:
         self.start_number = 0
         self.end_number = 0
         self.problems = {}
-        self.current_problem_number = 0  # Add this lineasw
+        self.current_problem_number = 0  # Add this line
 
         self.total_solve_time = 0
         self.correct_attempts = 0
@@ -34,6 +34,7 @@ class ImageSolverApp:
 
     def show_answer_wrapper(self):
         self.show_answer()
+
     def create_widgets(self):
         label_font = ("Helvetica", 12)
 
@@ -58,7 +59,6 @@ class ImageSolverApp:
         self.show_answer_button = tk.Button(self.master, text="Show Answer", command=self.show_answer_wrapper)
         self.show_answer_button.pack()
 
-
         # New button for hiding the answer
         self.hide_answer_button = tk.Button(self.master, text="Hide Answer", command=self.hide_answer, state=tk.DISABLED)
         self.hide_answer_button.pack()
@@ -75,35 +75,34 @@ class ImageSolverApp:
     def start_solving(self):
         self.start_number = int(self.start_number_entry.get())
         self.end_number = int(self.end_number_entry.get())
-    
+
         for problem_number in range(self.start_number, self.end_number + 1):
             self.current_problem_number = problem_number  # Update the current_problem_number for each problem
-    
+
             self.json_file = os.path.join(self.image_folder, 'answers.json')
-    
+
             try:
                 self.problems = load_json(self.json_file)
             except FileNotFoundError:
                 messagebox.showerror("Error", "answers.json not found in the selected folder.")
                 return
-    
+
             image_path = os.path.join(self.image_folder, f"problem_{problem_number}.png")
-    
+
             if not os.path.exists(image_path):
                 messagebox.showwarning("Warning", f"Image not found for problem {problem_number}. Skipping.")
                 continue
-    
+
             self.show_image(image_path)
             expected_solution = self.problems.get(str(problem_number))
             solve_time = self.solve_problem(expected_solution, problem_number)
-    
+
             self.total_solve_time += solve_time
             self.correct_attempts += 1
-    
+
         average_solve_time = self.total_solve_time / self.correct_attempts if self.correct_attempts > 0 else 0
         result_text = f"Average solving time for correct answers: {average_solve_time:.2f} seconds"
         messagebox.showinfo("Results", result_text)
-
 
     def show_image(self, image_path):
         img = Image.open(image_path)
@@ -123,7 +122,6 @@ class ImageSolverApp:
 
         self.image_label.config(image=img_tk)
         self.image_label.image = img_tk
-
 
     def is_solution_correct(self, expected_solution):
         try:
@@ -150,6 +148,9 @@ class ImageSolverApp:
             ok_button = tk.Button(input_dialog, text="OK", command=lambda: self.set_solution(solution_entry.get(), input_dialog), font=("Helvetica", 12))
             ok_button.pack()
 
+            # Bind <Return> key to invoke the "OK" button
+            solution_entry.bind('<Return>', lambda event=None: ok_button.invoke())
+
             input_dialog.wait_window()  # Wait for the input dialog to be closed
 
             end_time = time.time()
@@ -159,8 +160,9 @@ class ImageSolverApp:
                 return 0  # Return 0 solve time for problems with no solution
 
             if self.is_solution_correct(expected_solution):
-                messagebox.showinfo("Result", "Correct!")
                 self.play_correct_sound()
+                messagebox.showinfo("Result", "Correct!")
+                
 
                 # Proceed to the next problem only if the answer is correct
                 self.show_answer_button.config(state=tk.NORMAL)
@@ -169,8 +171,9 @@ class ImageSolverApp:
 
                 return end_time - start_time
             else:
-                messagebox.showwarning("Incorrect", "Incorrect answer. Please try again.")
                 self.play_wrong_sound()
+                messagebox.showwarning("Incorrect", "Incorrect answer. Please try again.")
+                
 
             # Enable the hide answer button after the user has attempted to solve the problem
             self.hide_answer_button.config(state=tk.NORMAL)
@@ -179,6 +182,7 @@ class ImageSolverApp:
             self.master.update()
 
             input_dialog.destroy()
+
     def show_answer(self):
         problem_number = self.current_problem_number  # Use the current problem number
         answer_image_path = os.path.join(self.image_folder, f"answer_{problem_number}.png")
@@ -217,8 +221,6 @@ class ImageSolverApp:
 
         # Destroy the Toplevel window
         input_dialog.destroy()
-
-
 
     def play_correct_sound(self):
         correct_sound_file = os.path.join(self.script_directory, 'correct_sound.mp3')
