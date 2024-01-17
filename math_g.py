@@ -145,12 +145,11 @@ class ImageSolverApp:
             solution_entry.pack(pady=10)
 
             # OK button to submit the solution
-            ok_button = tk.Button(input_dialog, text="OK", command=lambda: self.set_solution(solution_entry.get(), input_dialog),
-                                  font=("Helvetica", 12))
+            ok_button = tk.Button(input_dialog, text="OK", command=lambda: self.set_solution(solution_entry.get(), input_dialog), font=("Helvetica", 12))
             ok_button.pack()
 
-            # Bind the <Return> key to the "OK" button
-            input_dialog.bind('<Return>', lambda event=None: ok_button.invoke())
+            # Bind <Return> key to invoke the "OK" button
+            solution_entry.bind('<Return>', lambda event=None: ok_button.invoke())
 
             input_dialog.wait_window()  # Wait for the input dialog to be closed
 
@@ -161,8 +160,9 @@ class ImageSolverApp:
                 return 0  # Return 0 solve time for problems with no solution
 
             if self.is_solution_correct(expected_solution):
-                messagebox.showinfo("Result", "Correct!")
                 self.play_correct_sound()
+                messagebox.showinfo("Result", "Correct!")
+                
 
                 # Proceed to the next problem only if the answer is correct
                 self.show_answer_button.config(state=tk.NORMAL)
@@ -171,8 +171,9 @@ class ImageSolverApp:
 
                 return end_time - start_time
             else:
-                messagebox.showwarning("Incorrect", "Incorrect answer. Please try again.")
                 self.play_wrong_sound()
+                messagebox.showwarning("Incorrect", "Incorrect answer. Please try again.")
+                
 
             # Enable the hide answer button after the user has attempted to solve the problem
             self.hide_answer_button.config(state=tk.NORMAL)
@@ -231,7 +232,6 @@ class ImageSolverApp:
         pygame.mixer.music.load(correct_sound_file)
         pygame.mixer.music.play()
 
-
 def load_json(json_file):
     with open(json_file, 'r') as file:
         data = json.load(file)
@@ -243,11 +243,9 @@ def load_json(json_file):
                 pass
     return data
 
-
 def save_json(json_file, data):
     with open(json_file, 'w') as file:
         json.dump(data, file)
-
 
 if __name__ == "__main__":
     root = tk.Tk()
