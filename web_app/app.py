@@ -113,4 +113,5 @@ def load_answers(folder_name):
         return json.load(f)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(port=5000)  # You can choose any available port
+
