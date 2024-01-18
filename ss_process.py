@@ -113,9 +113,17 @@ class ScreenshotRenamerApp:
         self.default_answer = "p"  # Reset default answer for the next entry
 
     def get_user_input(self, prompt, default):
-        input_value = simpledialog.askstring("Input", prompt, initialvalue=default)
-        self.default_answer = "" if input_value == default else "p"  # If input is changed, remove default
-        return input_value
+            initial_value = default if default != "" else "p"
+            input_value = simpledialog.askstring("Input", prompt, initialvalue=initial_value)
+            
+            # If the user cancels the input, set the input_value to None
+            if input_value is None:
+                return None
+    
+            self.default_answer = "" if input_value == default else "p"  # If input is changed, remove default
+            return input_value
+            
+
 
 if __name__ == "__main__":
     root = tk.Tk()
