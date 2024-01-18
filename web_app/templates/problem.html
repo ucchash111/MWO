@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Solving Problem</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('index') }}">
+                <img src="{{ url_for('static', filename='images/mwo_logo.png') }}" alt="MWO Logo" height="60">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ml-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('select_folder') }}">Select Folder</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <h1 class="text-center">Problem {{ problem_number }}</h1>
+        <img src="{{ url_for('static', filename=session['folder'] + '/problem_' + problem_number|string + '.png') }}" class="img-fluid" alt="Problem image">
+        <form action="{{ url_for('check_answer') }}" method="post" class="mt-4">
+            <div class="form-group">
+                <label for="answer">Your Answer:</label>
+                <input type="text" class="form-control" name="answer" id="answer" required>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Submit Answer</button>
+        </form>
+        {% if error %}
+        <div class="alert alert-danger mt-3">{{ error }}</div>
+        {% endif %}
+        <a href="{{ url_for('show_answer') }}" class="btn btn-info btn-block mt-3">Show Answer</a>
+        {% if correct %}
+        <audio id="correct-sound" src="{{ url_for('static', filename='audio/correct.mp3') }}" preload="auto"></audio>
+        <script>document.getElementById('correct-sound').play();</script>
+        {% elif incorrect %}
+        <audio id="incorrect-sound" src="{{ url_for('static', filename='audio/incorrect.mp3') }}" preload="auto"></audio>
+        <script>document.getElementById('incorrect-sound').play();</script>
+        {% endif %}
+    </div>
+</body>
+</html>

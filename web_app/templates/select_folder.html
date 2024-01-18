@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Select Folder</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center">Select a folder containing problems & answers:</h1>
+        <form action="{{ url_for('select_folder') }}" method="post" class="mt-4">
+            <div class="form-group">
+                <select name="folder" class="form-control">
+                    {% for folder in folders %}
+                    <option value="{{ folder }}">{{ folder }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Select</button>
+        </form>
+        <a href="{{ url_for('index') }}" class="btn btn-link btn-block">Back to Home</a>
+    </div>
+</body>
+</html>
