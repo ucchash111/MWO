@@ -34,60 +34,85 @@ def select_folder():
 def start():
     start_number = int(request.form.get('start_number'))
     end_number = int(request.form.get('end_number'))
-    session['current_number'] = start_number
-    session['end_number'] = end_number
+    session['answers'] = load_answers(session['folder'])
+
+    # Filter available problems
+    available_problems = []
+    for num in range(start_number, end_number + 1):
+        problem_image_path = os.path.join(session['folder'], f'problem_{num}.png')
+        if os.path.isfile(os.path.join(app.static_folder, problem_image_path)) and str(num) in session['answers']:
+            available_problems.append(num)
+
+    session['available_problems'] = available_problems
+    session['current_index'] = 0  # Index in the available_problems list
     session['correct_times'] = []  # To store times of correct answers
     session['start_time'] = datetime.utcnow().timestamp()  # Store the start time
-    session['answers'] = load_answers(session['folder'])
-    return redirect(url_for('problem'))
+
+    if available_problems:
+        return redirect(url_for('problem'))
+    else:
+        return render_template('no_problems_available.html')  # Show a message if no problems are available
 
 @app.route('/problem')
 def problem():
-    current_number = session.get('current_number', 0)
-    end_number = session.get('end_number', 0)
+    available_problems = session.get('available_problems', [])
+    current_index = session.get('current_index', 0)
 
-    if current_number > end_number:
+    if current_index >= len(available_problems):
+        # Calculate average time and display the finished page
         if session.get('correct_times'):
             average_time = sum(session['correct_times']) / len(session['correct_times'])
-            # Format average_time to two decimal places
             average_time = "{:.2f}".format(average_time)
         else:
             average_time = "0.00"
         return render_template('finished.html', average_time=average_time)
-    
+
+    current_number = available_problems[current_index]
     return render_template('problem.html', problem_number=current_number)
 
 
 @app.route('/check_answer', methods=['POST'])
 def check_answer():
     entered_answer = request.form.get('answer')
-    problem_number = session.get('current_number', 0)
-    correct_answer = session['answers'].get(str(problem_number))
-    current_time = datetime.utcnow().timestamp()
+    available_problems = session.get('available_problems', [])
+    current_index = session.get('current_index', 0)
 
-    if entered_answer == correct_answer:
-        time_taken = current_time - session['start_time']
-        session['correct_times'].append(time_taken)  # Store the time taken for this correct answer
-        session['start_time'] = current_time  # Reset the start time for the next problem
+    # Ensure we are still within the range of available problems
+    if current_index < len(available_problems):
+        problem_number = available_problems[current_index]
+        correct_answer = session['answers'].get(str(problem_number))
+        current_time = datetime.utcnow().timestamp()
 
-        # Increment the current problem number
-        session['current_number'] += 1
+        if entered_answer == correct_answer:
+            time_taken = current_time - session['start_time']
+            session['correct_times'].append(time_taken)  # Store the time taken for this correct answer
+            session['start_time'] = current_time  # Reset the start time for the next problem
 
-        # Check if it's time to finish
-        if session['current_number'] > session['end_number']:
-            average_time = sum(session['correct_times']) / len(session['correct_times'])
-            # Format average_time to two decimal places
-            average_time = "{:.2f}".format(average_time)
-            return render_template('finished.html', average_time=average_time)
+            # Increment the current index to point to the next available problem
+            session['current_index'] += 1
 
-        return render_template('problem.html', problem_number=session['current_number'], correct=True)
+            # Check if all available problems are finished
+            if session['current_index'] >= len(available_problems):
+                average_time = sum(session['correct_times']) / len(session['correct_times'])
+                average_time = "{:.2f}".format(average_time)
+                return render_template('finished.html', average_time=average_time)
+            
+            # Redirect to the next problem
+            return redirect(url_for('problem', correct=True))
+        else:
+            # Incorrect answer, re-render the same problem
+            return render_template('problem.html', problem_number=problem_number, error="Incorrect answer. Please try again.", incorrect=True)
     else:
-        return render_template('problem.html', problem_number=problem_number, error="Incorrect answer. Please try again.", incorrect=True)
+        # All problems have been attempted, show finished page
+        return redirect(url_for('finished'))
 
 @app.route('/finished')
 def finished():
-    correct_times = session.get('correct_times', [])
-    average_time = sum(correct_times) / len(correct_times) if correct_times else 0
+    if session.get('correct_times'):
+        average_time = sum(session['correct_times']) / len(session['correct_times'])
+        average_time = "{:.2f}".format(average_time)
+    else:
+        average_time = "0.00"
     return render_template('finished.html', average_time=average_time)
 
 @app.route('/show_answer')
