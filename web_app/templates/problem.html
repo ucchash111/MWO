@@ -1,51 +1,81 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Solving Problem</title>
+    <title>Problem {{ problem_number }}</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        #timer {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: red;
+            text-align: right;
+        }
+    </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-light bg-light">
-        <div class="container">
-            <a class="navbar-brand" href="{{ url_for('index') }}">
-                <img src="{{ url_for('static', filename='images/mwo_logo.png') }}" alt="MWO Logo" height="60">
-            </a>
-            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ml-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('select_folder') }}">Select Folder</a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
-
     <div class="container mt-5">
         <h1 class="text-center">Problem {{ problem_number }}</h1>
+        <div id="timer">Time: 00:00</div>
         <img src="{{ url_for('static', filename=session['folder'] + '/problem_' + problem_number|string + '.png') }}" class="img-fluid" alt="Problem image">
         <form action="{{ url_for('check_answer') }}" method="post" class="mt-4">
             <div class="form-group">
-                <label for="answer">Your Answer:</label>
-                <input type="text" class="form-control" name="answer" id="answer" required>
+                <input type="text" class="form-control" name="answer" id="answer" placeholder="Enter your answer here" required>
             </div>
             <button type="submit" class="btn btn-primary btn-block">Submit Answer</button>
         </form>
         {% if error %}
         <div class="alert alert-danger mt-3">{{ error }}</div>
         {% endif %}
-        <a href="{{ url_for('show_answer') }}" class="btn btn-info btn-block mt-3">Show Answer</a>
-        {% if correct %}
-        <audio id="correct-sound" src="{{ url_for('static', filename='audio/correct.mp3') }}" preload="auto"></audio>
-        <script>document.getElementById('correct-sound').play();</script>
-        {% elif incorrect %}
-        <audio id="incorrect-sound" src="{{ url_for('static', filename='audio/incorrect.mp3') }}" preload="auto"></audio>
-        <script>document.getElementById('incorrect-sound').play();</script>
-        {% endif %}
+        <!-- Button trigger modal -->
+        <button type="button" class="btn btn-info btn-block mt-3" data-toggle="modal" data-target="#answerModal">
+            Show Answer
+        </button>
+{% if correct %}
+<audio id="correct-sound" src="{{ url_for('static', filename='audio/correct.mp3') }}" preload="auto"></audio>
+<script>document.getElementById('correct-sound').play();</script>
+{% elif incorrect %}
+<audio id="incorrect-sound" src="{{ url_for('static', filename='audio/incorrect.mp3') }}" preload="auto"></audio>
+<script>document.getElementById('incorrect-sound').play();</script>
+{% endif %}
+        <!-- Answer Modal -->
+        <div class="modal fade" id="answerModal" tabindex="-1" aria-labelledby="answerModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="answerModalLabel">Answer for Problem {{ problem_number }}</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <img src="{{ url_for('static', filename=session['folder'] + '/answer_' + problem_number|string + '.png') }}" class="img-fluid" alt="Answer image">
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
+
+    <script>
+        // Timer script
+        window.onload = function() {
+            let seconds = 0;
+            let minutes = 0;
+            let timerElement = document.getElementById('timer');
+            let timer = setInterval(function() {
+                seconds++;
+                if (seconds == 60) {
+                    minutes++;
+                    seconds = 0;
+                }
+                timerElement.textContent = 'Time: ' + (minutes ? (minutes > 9 ? minutes : '0' + minutes) : '00') + ':' + (seconds > 9 ? seconds : '0' + seconds);
+            }, 1000);
+        };
+    </script>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 </body>
 </html>
