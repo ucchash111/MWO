@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, session
 from werkzeug.utils import secure_filename
 import os
 import json
+import base64
 from datetime import datetime
 
 app = Flask(__name__)
@@ -28,6 +29,41 @@ def select_folder():
         folders = [name for name in os.listdir(base_path) if os.path.isdir(os.path.join(base_path, name))]
         return render_template('select_folder.html', folders=folders)
 
+from flask import request, jsonify, session
+from PIL import Image, ImageDraw
+import base64
+import io
+import os
+
+@app.route('/save_canvas', methods=['POST'])
+def save_canvas():
+    data = request.get_json()
+    image_data = data['imageData']
+    problem_number = data['problemNumber']
+    # Assume you're passing the folder name or retrieving it from the session
+    # folder_name = data['folderName'] # If passed directly in the request
+    folder_name = session.get('folder', 'default_folder')  # Or retrieve from session
+    image_data = image_data.split(",")[1]  # Remove the "data:image/png;base64," part
+
+    # Decode the base64 image
+    image_bytes = base64.b64decode(image_data)
+    image = Image.open(io.BytesIO(image_bytes))
+
+    # Create a white background image
+    bg = Image.new('RGBA', image.size, (255, 255, 255, 255))
+    # Composite the original image onto the white background
+    composite = Image.alpha_composite(bg, image.convert('RGBA'))
+
+    # Construct the path to save the image in the same folder as the problem
+    folder_path = os.path.join(app.static_folder,  folder_name)
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
+    filename = f"canvas_problem_{problem_number}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.png"
+    file_path = os.path.join(folder_path, filename)
+
+    composite.save(file_path, 'PNG')
+
+    return jsonify({'message': 'Image saved successfully'}), 200
 
 
 @app.route('/start', methods=['POST'])

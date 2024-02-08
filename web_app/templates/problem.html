@@ -12,6 +12,16 @@
             color: red;
             text-align: right;
         }
+        #problem-canvas {
+            max-width: 100%;
+            border: 1px solid #000;
+            touch-action: none;
+            display: block;
+            margin: 0 auto;
+        }
+        #canvas-container {
+            touch-action: none; /* Prevent scrolling on touch devices within this container */
+        }
     </style>
 </head>
 <body>
@@ -42,17 +52,13 @@
             </div>
             <button type="submit" class="btn btn-primary btn-block">Submit Answer</button>
         </form>
-        {% if error %}
-        <div class="alert alert-danger mt-3">{{ error }}</div>
-        {% endif %}
-        <!-- Button trigger modal -->
-        <button type="button" class="btn btn-info btn-block mt-3" data-toggle="modal" data-target="#answerModal">
-            Show Answer
-        </button>
-<audio id="correct-sound" src="{{ url_for('static', filename='audio/correct.mp3') }}" preload="auto"></audio>
-    <audio id="incorrect-sound" src="{{ url_for('static', filename='audio/incorrect.mp3') }}" preload="auto"></audio>
+        <button type="button" class="btn btn-info btn-block mt-3" data-toggle="modal" data-target="#answerModal">Show Answer</button>
+        <div id="canvas-container" data-problem-number="{{ problem_number }}" class="mt-4">
 
-        <!-- Answer Modal -->
+            <canvas id="problem-canvas"></canvas>
+            <button id="clear-canvas" class="btn btn-secondary mt-2">Clear</button>
+            <button id="save-canvas" class="btn btn-success mt-2">Submit Drawing</button>
+        </div>
         <div class="modal fade" id="answerModal" tabindex="-1" aria-labelledby="answerModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-lg">
                 <div class="modal-content">
@@ -71,26 +77,124 @@
     </div>
 
     <script>
-        // Timer script
-        window.onload = function() {
-            let seconds = 0;
-            let minutes = 0;
-            let timerElement = document.getElementById('timer');
-            let timer = setInterval(function() {
-                seconds++;
-                if (seconds == 60) {
-                    minutes++;
-                    seconds = 0;
+        document.addEventListener("DOMContentLoaded", function() {
+            var canvas = document.getElementById('problem-canvas');
+            var ctx = canvas.getContext('2d');
+            adjustCanvasSize();
+            initializeTimer();
+
+            function adjustCanvasSize() {
+        var container = document.getElementById('canvas-container');
+        // Assuming the container's width will dictate the size of the canvas
+        var width = container.offsetWidth;
+        // Calculate the height based on the A4 aspect ratio, making it resemble an A4 page
+        var height = width * 1.4142; // A4 aspect ratio
+
+        canvas.width = width;
+        canvas.style.width = width + "px"; // Set style width to match (for responsiveness)
+        
+        canvas.height = height;
+        canvas.style.height = height + "px"; // Set style height to match
+
+        ctx.fillStyle = "#FFFFFF"; // Ensure the canvas starts with a white background
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+            function initializeTimer() {
+                let timerElement = document.getElementById('timer');
+                let seconds = 0, minutes = 0;
+                setInterval(function() {
+                    seconds++;
+                    if (seconds >= 60) {
+                        minutes++;
+                        seconds = 0;
+                    }
+                    timerElement.innerHTML = `Time: ${(minutes ? (minutes > 9 ? minutes : '0' + minutes) : '00')}:${(seconds > 9 ? seconds : '0' + seconds)}`;
+                }, 1000);
+            }
+
+            canvas.addEventListener('mousedown', function(e) {
+                startDrawing(e);
+            });
+            canvas.addEventListener('mousemove', function(e) {
+                if(drawing) draw(e);
+            });
+            canvas.addEventListener('mouseup', function(e) {
+                endDrawing();
+            });
+            canvas.addEventListener('mouseleave', function(e) {
+                endDrawing();
+            });
+
+            canvas.addEventListener('touchstart', function(e) {
+                startDrawing(e);
+            });
+            canvas.addEventListener('touchmove', function(e) {
+                if(drawing) draw(e);
+            });
+            canvas.addEventListener('touchend', function(e) {
+                endDrawing();
+            });
+
+            let drawing = false;
+            let lastX = 0;
+            let lastY = 0;
+
+            function startDrawing(e) {
+                drawing = true;
+                [lastX, lastY] = getXY(canvas, e);
+            }
+
+            function draw(e) {
+                if (!drawing) return;
+                const [x, y] = getXY(canvas, e);
+                ctx.beginPath();
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(x, y);
+                ctx.stroke();
+                [lastX, lastY] = [x, y];
+            }
+
+            function endDrawing() {
+                drawing = false;
+            }
+
+            function getXY(canvas, event) {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                let x, y;
+                if (event.touches) {
+                    x = (event.touches[0].clientX - rect.left) * scaleX;
+                    y = (event.touches[0].clientY - rect.top) * scaleY;
+                } else {
+                    x = (event.clientX - rect.left) * scaleX;
+                    y = (event.clientY - rect.top) * scaleY;
                 }
-                timerElement.textContent = 'Time: ' + (minutes ? (minutes > 9 ? minutes : '0' + minutes) : '00') + ':' + (seconds > 9 ? seconds : '0' + seconds);
-            }, 1000);
-        };
-        document.getElementById('answer').focus();
-        {% if request.args.get('correct') %}
-        document.getElementById('correct-sound').play();
-        {% elif incorrect %}
-        document.getElementById('incorrect-sound').play();
-        {% endif %}
+                return [x, y];
+            }
+
+            document.getElementById('clear-canvas').addEventListener('click', function() {
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            });
+
+            document.getElementById('save-canvas').addEventListener('click', function() {
+                var problemNumber = document.getElementById('canvas-container').getAttribute('data-problem-number');
+                var dataURL = canvas.toDataURL('image/png');
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', '/save_canvas', true);
+                xhr.setRequestHeader('Content-Type', 'application/json');
+                xhr.send(JSON.stringify({imageData: dataURL, problemNumber: problemNumber}));
+                xhr.onload = function() {
+                    if (xhr.status == 200) {
+                        alert('Drawing submitted successfully.');
+                    }
+                };
+            });
+
+            window.addEventListener('resize', adjustCanvasSize);
+        });
     </script>
 
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
