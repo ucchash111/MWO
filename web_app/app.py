@@ -21,10 +21,11 @@ def index():
 def select_folder():
     if request.method == 'POST':
         selected_folder = request.form.get('folder')
-        session['folder'] = os.path.join('images', selected_folder)  # Prepend 'images/' to the selected folder
+        # Use forward slashes for URLs, even on Windows
+        folder_path = os.path.join('images', selected_folder).replace('\\', '/')
+        session['folder'] = folder_path
         return redirect(url_for('index'))
     else:
-        # List directories inside 'static/images'
         base_path = os.path.join(app.static_folder, 'images')
         folders = [name for name in os.listdir(base_path) if os.path.isdir(os.path.join(base_path, name))]
         return render_template('select_folder.html', folders=folders)
