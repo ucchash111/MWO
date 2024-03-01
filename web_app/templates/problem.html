@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css" rel="stylesheet">
+
     <style>
         #timer {
             font-size: 1.5em;
@@ -22,6 +24,21 @@
         #canvas-container {
             touch-action: none; /* Prevent scrolling on touch devices within this container */
         }
+        .icon-btn {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background-color: #ffffff;
+    color: #000000;
+    border: 1px solid #ddd;
+    margin-left: 10px; /* Space between buttons */
+    z-index: 1000; /* Ensure it floats above other content */
+}
+
+.icon-btn i {
+    font-size: 20px; /* Adjust icon size */
+}
+
     </style>
 </head>
 <body>
@@ -57,6 +74,7 @@
 
             <canvas id="problem-canvas"></canvas>
             <button id="clear-canvas" class="btn btn-secondary mt-2">Clear</button>
+
             <button id="save-canvas" class="btn btn-success mt-2">Submit Drawing</button>
         </div>
         <div class="modal fade" id="answerModal" tabindex="-1" aria-labelledby="answerModalLabel" aria-hidden="true">
@@ -77,28 +95,82 @@
     </div>
 
     <script>
-        document.addEventListener("DOMContentLoaded", function() {
+document.addEventListener("DOMContentLoaded", function() {
             var canvas = document.getElementById('problem-canvas');
             var ctx = canvas.getContext('2d');
+                // Set default stroke size
+                var strokeSize = 5; // Default stroke size
+// Adjust these for smoother lines
+ctx.lineJoin = 'round';
+ctx.lineCap = 'round';
+ctx.lineWidth = strokeSize; // Set initial stroke size
+
             adjustCanvasSize();
             initializeTimer();
+            
+            var undoStack = [], redoStack = [];
+
+            function saveState() {
+                undoStack.push(canvas.toDataURL());
+                redoStack = [];
+            }
+
+            saveState();
+
+            function undo() {
+                if (undoStack.length > 1) {
+                    redoStack.push(undoStack.pop());
+                    var lastState = undoStack[undoStack.length - 1];
+                    var img = new Image();
+                    img.onload = function() {
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    };
+                    img.src = lastState;
+                }
+            }
+
+            function redo() {
+                if (redoStack.length > 0) {
+                    var nextState = redoStack.pop();
+                    undoStack.push(nextState);
+                    var img = new Image();
+                    img.onload = function() {
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    };
+                    img.src = nextState;
+                }
+            }
+
+            document.getElementById('undo').addEventListener('click', undo);
+            document.getElementById('redo').addEventListener('click', redo);
+            document.getElementById('clear-canvas').addEventListener('click', function() {
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                saveState();
+            });
 
             function adjustCanvasSize() {
-        var container = document.getElementById('canvas-container');
-        // Assuming the container's width will dictate the size of the canvas
-        var width = container.offsetWidth;
-        // Calculate the height based on the A4 aspect ratio, making it resemble an A4 page
-        var height = width * 1.4142; // A4 aspect ratio
+    var container = document.getElementById('canvas-container');
+    var width = container.offsetWidth;
+    var height = width * 1.4142; // A4 aspect ratio
 
-        canvas.width = width;
-        canvas.style.width = width + "px"; // Set style width to match (for responsiveness)
-        
-        canvas.height = height;
-        canvas.style.height = height + "px"; // Set style height to match
+    // Create an off-screen canvas to save the current state
+    var offScreenCanvas = document.createElement('canvas');
+    var offScreenCtx = offScreenCanvas.getContext('2d');
+    offScreenCanvas.width = canvas.width;
+    offScreenCanvas.height = canvas.height;
+    offScreenCtx.drawImage(canvas, 0, 0);
 
-        ctx.fillStyle = "#FFFFFF"; // Ensure the canvas starts with a white background
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
+    canvas.width = width;
+    canvas.style.width = width + "px";
+    canvas.height = height;
+    canvas.style.height = height + "px";
+
+    // Restore the saved state
+    ctx.drawImage(offScreenCanvas, 0, 0, width, height);
+}
 
             function initializeTimer() {
                 let timerElement = document.getElementById('timer');
@@ -141,22 +213,34 @@
             let lastY = 0;
 
             function startDrawing(e) {
-                drawing = true;
-                [lastX, lastY] = getXY(canvas, e);
-            }
+    // Ignore if more than one touch point is detected
+    if (e.touches && e.touches.length > 1) {
+        return;
+    }
+    drawing = true;
+    [lastX, lastY] = getXY(canvas, e);
+    e.preventDefault(); // Call this to prevent any default action
+}
 
             function draw(e) {
-                if (!drawing) return;
-                const [x, y] = getXY(canvas, e);
-                ctx.beginPath();
-                ctx.moveTo(lastX, lastY);
-                ctx.lineTo(x, y);
-                ctx.stroke();
-                [lastX, lastY] = [x, y];
-            }
+    if (!drawing) return;
+    const [x, y] = getXY(canvas, e);
+    ctx.beginPath();
+    ctx.lineWidth = strokeSize;
+    ctx.moveTo(lastX, lastY);
+
+    // This creates a smoother path by drawing a curve instead
+    ctx.quadraticCurveTo(lastX, lastY, x, y);
+
+    ctx.stroke();
+    [lastX, lastY] = [x, y];
+}
 
             function endDrawing() {
-                drawing = false;
+                if (drawing) {
+                    drawing = false;
+                    saveState();
+                }
             }
 
             function getXY(canvas, event) {
@@ -192,13 +276,36 @@
                     }
                 };
             });
+            canvas.addEventListener('touchstart', startDrawing, { passive: false });
+            canvas.addEventListener('touchstart', function(e) {
+        e.preventDefault(); // Prevent scrolling
+        startDrawing(e);
+    }, { passive: false });
 
+    canvas.addEventListener('touchmove', function(e) {
+        e.preventDefault(); // Prevent scrolling
+        if(drawing) draw(e);
+    }, { passive: false });
+
+    canvas.addEventListener('touchend', function(e) {
+        e.preventDefault(); // Prevent any potential scrolling behavior
+        endDrawing();
+    }, { passive: false });
             window.addEventListener('resize', adjustCanvasSize);
         });
+            // Function to change stroke size
+    function changeStrokeSize(newSize) {
+        strokeSize = newSize;
+        ctx.lineWidth = strokeSize;
+    }
     </script>
 
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <!-- Floating Action Buttons -->
+<button id="undo" class="btn icon-btn" title="Undo"><i class="fas fa-undo"></i></button>
+<button id="redo" class="btn icon-btn" title="Redo" style="right: 60px;"><i class="fas fa-redo"></i></button>
+
 </body>
 </html>
