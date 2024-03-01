@@ -26,17 +26,33 @@
         }
         .icon-btn {
     position: fixed;
-    top: 20px;
-    right: 20px;
     background-color: #ffffff;
     color: #000000;
     border: 1px solid #ddd;
-    margin-left: 10px; /* Space between buttons */
     z-index: 1000; /* Ensure it floats above other content */
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
+.container, #canvas-container {
+    padding: 0;
+    margin: 20 auto; /* This centers the container while keeping padding zero */
+}
 .icon-btn i {
     font-size: 20px; /* Adjust icon size */
+}
+html, body {
+    margin: 0;
+    padding: 0;
+    /* This ensures the page takes full viewport width */
+    width: 100%;
+    height: 100%;
+    /* This helps to remove any default browser styling */
+    box-sizing: border-box;
 }
 
     </style>
@@ -70,13 +86,7 @@
             <button type="submit" class="btn btn-primary btn-block">Submit Answer</button>
         </form>
         <button type="button" class="btn btn-info btn-block mt-3" data-toggle="modal" data-target="#answerModal">Show Answer</button>
-        <div id="canvas-container" data-problem-number="{{ problem_number }}" class="mt-4">
 
-            <canvas id="problem-canvas"></canvas>
-            <button id="clear-canvas" class="btn btn-secondary mt-2">Clear</button>
-
-            <button id="save-canvas" class="btn btn-success mt-2">Submit Drawing</button>
-        </div>
         <div class="modal fade" id="answerModal" tabindex="-1" aria-labelledby="answerModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-lg">
                 <div class="modal-content">
@@ -92,6 +102,11 @@
                 </div>
             </div>
         </div>
+    </div>
+    <div id="canvas-container" data-problem-number="{{ problem_number }}" class="mt-4">
+
+        <canvas id="problem-canvas"></canvas>
+
     </div>
 
     <script>
@@ -150,27 +165,37 @@ ctx.lineWidth = strokeSize; // Set initial stroke size
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 saveState();
             });
-
+            document.getElementById('scroll-up').addEventListener('click', function() {
+    window.scrollBy(0, -100); // Scrolls up by 100 pixels
+});
+document.getElementById('scroll-down').addEventListener('click', function() {
+    window.scrollBy(0, 100); // Scrolls down by 100 pixels
+});
             function adjustCanvasSize() {
     var container = document.getElementById('canvas-container');
-    var width = container.offsetWidth;
-    var height = width * 1.4142; // A4 aspect ratio
+    // Use window.innerWidth to ensure full screen width is utilized
+    var width = window.innerWidth;
+    var height = width * 1.4142; // Maintain A4 aspect ratio
 
     // Create an off-screen canvas to save the current state
     var offScreenCanvas = document.createElement('canvas');
     var offScreenCtx = offScreenCanvas.getContext('2d');
     offScreenCanvas.width = canvas.width;
     offScreenCanvas.height = canvas.height;
-    offScreenCtx.drawImage(canvas, 0, 0);
+    // Ensure to draw the image based on the offScreenCanvas's size to avoid scaling
+    offScreenCtx.drawImage(canvas, 0, 0, offScreenCanvas.width, offScreenCanvas.height);
 
-    canvas.width = width;
-    canvas.style.width = width + "px";
-    canvas.height = height;
-    canvas.style.height = height + "px";
+    canvas.width = width; // Set canvas width to full screen width
+    canvas.style.width = width + "px"; // Ensure style width matches
+    canvas.height = height; // Set height based on A4 aspect ratio
+    canvas.style.height = height + "px"; // Ensure style height matches
 
-    // Restore the saved state
+    // Restore the saved state to the resized canvas, scaling it to fit new dimensions
     ctx.drawImage(offScreenCanvas, 0, 0, width, height);
 }
+
+// Listen for orientation change events on devices that support it
+window.addEventListener('orientationchange', adjustCanvasSize);
 
             function initializeTimer() {
                 let timerElement = document.getElementById('timer');
@@ -303,9 +328,14 @@ ctx.lineWidth = strokeSize; // Set initial stroke size
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-    <!-- Floating Action Buttons -->
-<button id="undo" class="btn icon-btn" title="Undo"><i class="fas fa-undo"></i></button>
-<button id="redo" class="btn icon-btn" title="Redo" style="right: 60px;"><i class="fas fa-redo"></i></button>
+
+<!-- Floating Action Buttons -->
+<button id="scroll-up" class="btn icon-btn" title="Scroll Up" style="top: 20px; right: 300px;"><i class="fas fa-chevron-up"></i></button>
+<button id="scroll-down" class="btn icon-btn" title="Scroll Down" style="top: 20px; right: 250px;"><i class="fas fa-chevron-down"></i></button>
+<button id="save-canvas" class="btn icon-btn" title="Save" style="top: 20px; right: 200px;"><i class="fas fa-save"></i></button>
+<button id="clear-canvas" class="btn icon-btn" title="Clear" style="top: 20px; right: 150px;"><i class="fas fa-eraser"></i></button>
+<button id="undo" class="btn icon-btn" title="Undo" style="top: 20px; right: 100px;"><i class="fas fa-undo"></i></button>
+<button id="redo" class="btn icon-btn" title="Redo" style="top: 20px; right: 50px;"><i class="fas fa-redo"></i></button>
 
 </body>
 </html>
